@@ -11,8 +11,11 @@
   <!-- Send format -->
   <arg name="send_format" default="288" />
 
-  <!-- Recieve format -->
+  <!-- Receive format -->
   <arg name="recv_format" default="292" />
+
+  <!-- Async slave mode -->
+  <arg name="async_slave" default="false" />
 
   <include ns="/$(arg robot_name)" file="$(find bcap_service)/launch/bcap_service.launch.xml">
     <arg name="ip_address" value="$(arg ip_address)" />
@@ -29,7 +32,14 @@
   <param name="robot_description" type="str" textfile="$(find denso_robot_descriptions)/$(arg robot_description)/$(arg robot_name).urdf"/>
 
   <!-- Controller -->
-  <include ns="/$(arg robot_name)" file="$(find denso_robot_descriptions)/$(arg robot_description)/$(arg robot_name).launch.xml" />
+  <group if="$(arg async_slave)">
+    <include if="$(arg async_slave)" ns="/$(arg robot_name)" file="$(find denso_robot_descriptions)/$(arg robot_description)/$(arg robot_name)_async.launch.xml" />
+  </group>
+  
+  <group unless="$(arg async_slave)">
+    <include unless="$(arg async_slave)" ns="/$(arg robot_name)" file="$(find denso_robot_descriptions)/$(arg robot_description)/$(arg robot_name).launch.xml" />
+  </group>
+  
   <node name="denso_robot_control" pkg="denso_robot_control" type="denso_robot_control" output="screen" ns="/$(arg robot_name)"/>
 
   <rosparam file="$(find denso_robot_descriptions)/$(arg robot_description)/denso_robot_control.yaml" command="load" />

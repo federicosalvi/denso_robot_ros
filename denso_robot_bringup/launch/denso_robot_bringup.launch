@@ -11,6 +11,8 @@
   <!-- you can specify the send_format and recv_format parameters -->
   <arg name="send_format" default="288" />
   <arg name="recv_format" default="292" />
+
+  <arg name="async_slave" default="false" />
  
   <!-- load the robot_description parameter before launching ROS-I nodes -->
   <include file="$(find denso_robot_moveit_config)/launch/planning_context.launch" >
@@ -39,6 +41,7 @@
       <arg name="ip_address" value="$(arg ip_address)" />
       <arg name="send_format" value="$(arg send_format)" />
       <arg name="recv_format" value="$(arg recv_format)" />
+      <arg name="async_slave" value="$(arg async_slave)" />
     </include>
   </group>  
 

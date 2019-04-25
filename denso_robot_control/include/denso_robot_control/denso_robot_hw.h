@@ -102,6 +102,7 @@ namespace denso_robot_control
     int m_robJoints;
     int m_sendfmt;
     int m_recvfmt;
+    int m_slaveAsync;
 
     ros::Subscriber m_subChangeMode;
     ros::Subscriber m_subMiniIO;

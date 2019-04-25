@@ -37,10 +37,12 @@ __BRINGUP_TEXT = """<launch>
   <arg name=\"sim\" default=\"true\" />
   <arg name=\"ip_address\" default=\"192.168.0.1\" />
 
-  <!-- If you want to change send and recieve format of denso_robot_control, -->
+  <!-- If you want to change send and receive format of denso_robot_control, -->
   <!-- you can specify the send_format and recv_format parameters -->
   <arg name=\"send_format\" default=\"288\" />
   <arg name=\"recv_format\" default=\"292\" />
+
+  <arg name=\"async_slave\" default=\"false\" />
 
   <include file=\"$(find denso_robot_bringup)/launch/denso_robot_bringup.launch\">
     <arg name=\"robot_name\" value=\"{rob_name}\"/>
@@ -48,6 +50,7 @@ __BRINGUP_TEXT = """<launch>
     <arg name=\"ip_address\" value=\"$(arg ip_address)\"/>
     <arg name=\"send_format\" value=\"$(arg send_format)\" />
     <arg name=\"recv_format\" value=\"$(arg recv_format)\" />
+    <arg name=\"async_slave\" value=\"$(arg async_slave)\" />
   </include>
 </launch>"""
 

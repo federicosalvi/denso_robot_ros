@@ -56,6 +56,7 @@ namespace denso_robot_control
     m_recvfmt   = DensoRobotRC8::RECVFMT_POSE_PJ
       | DensoRobotRC8::RECVFMT_MINIIO
       | DensoRobotRC8::RECVFMT_HANDIO;
+    m_slaveAsync = 0;
   }
 
   DensoRobotHW::~DensoRobotHW()
@@ -73,6 +74,9 @@ namespace denso_robot_control
 
     if (!nh.getParam("robot_joints", m_robJoints)) {
       ROS_WARN("Failed to get robot_joints parameter.");
+    }
+    if (!nh.getParam("slave_async", m_slaveAsync)) {
+      ROS_WARN("Failed to get slave_async parameter.");
     }
 
     for (int i = 0; i < m_robJoints; i++) {
@@ -201,8 +205,13 @@ namespace denso_robot_control
         "ChangeMode", 1, &DensoRobotHW::Callback_ChangeMode, this);
     m_pubCurMode = nh.advertise<Int32>("CurMode", 1);
     
-    hr = ChangeModeWithClearError(DensoRobotRC8::SLVMODE_SYNC_WAIT
+    if (m_slaveAsync) {
+      hr = ChangeModeWithClearError(DensoRobotRC8::SLVMODE_ASYNC
 	| DensoRobotRC8::SLVMODE_POSE_J);
+    } else {
+      hr = ChangeModeWithClearError(DensoRobotRC8::SLVMODE_SYNC_WAIT
+	| DensoRobotRC8::SLVMODE_POSE_J);
+    }
     if(FAILED(hr)) {
       ROS_ERROR("Failed to change to slave mode. (%X)", hr);
       return hr;

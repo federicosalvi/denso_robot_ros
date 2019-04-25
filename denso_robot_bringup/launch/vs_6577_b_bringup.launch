@@ -12,7 +12,7 @@
   <arg name="async_slave" default="false" />
 
   <include file="$(find denso_robot_bringup)/launch/denso_robot_bringup.launch">
-    <arg name="robot_name" value="vs060"/>
+    <arg name="robot_name" value="vs_6577_b"/>
     <arg name="sim" value="$(arg sim)"/>
     <arg name="ip_address" value="$(arg ip_address)"/>
     <arg name="send_format" value="$(arg send_format)" />
