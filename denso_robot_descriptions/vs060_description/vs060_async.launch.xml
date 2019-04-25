@@ -1,7 +1,7 @@
 <launch>
 	<param name="robot_name" value="VS060A3-AV6-NNN-NNN"/>
 	<param name="robot_joints" value="6"/>
-        <param name="async_slave" value="0"/>
+        <param name="async_slave" value="1"/>
 	<param name="joint_1" value="1"/>
 	<param name="joint_2" value="1"/>
 	<param name="joint_3" value="1"/>
