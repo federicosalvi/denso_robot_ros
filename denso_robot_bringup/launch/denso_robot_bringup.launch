@@ -43,6 +43,7 @@
       <arg name="recv_format" value="$(arg recv_format)" />
       <arg name="async_slave" value="$(arg async_slave)" />
     </include>
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch" />
   </group>  
 
 
