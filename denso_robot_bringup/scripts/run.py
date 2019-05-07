@@ -17,15 +17,23 @@ def sample_sphere(r, s, t):
     return Point(x,y,z)
 
 def look_at(forward):
-    camera_up = np.array([1,0,0])
+    camera_up = np.array([0,0,1])
     left = normalize(np.cross(camera_up, forward))
     up = np.cross(forward, left)
 
-    roll = np.arcsin(forward[0])
-    pitch = np.arctan2(forward[1], forward[2])
-    yaw = np.arctan2(up[0]/np.cos(roll),left[0]/np.cos(roll))
-
-    return Quaternion(*tf.transformations.quaternion_from_euler(roll,pitch,yaw))
+    R = np.vstack((forward, left, up)).T
+    rospy.loginfo('\nRotation matrix:\n {}\n'.format(R))
+    sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+    singular = sy < 1e-6
+    if  not singular :
+        x = np.arctan2(R[2,1] , R[2,2])
+        y = np.arctan2(-R[2,0], sy)
+        z = np.arctan2(R[1,0], R[0,0])
+    else :
+        x = np.arctan2(-R[1,2], R[1,1])
+        y = np.arctan2(-R[2,0], sy)
+        z = 0
+    return Quaternion(*tf.transformations.quaternion_from_euler(x,y,z))
 
 
 moveit_commander.roscpp_initialize(sys.argv)
@@ -66,14 +74,14 @@ CAMERA_UPRIGHT = -0.79
 group.set_joint_value_target({
   "joint_1": 0,
   "joint_2": 0,
-  "joint_3": np.pi/4,
+  "joint_3": 0,
   "joint_4": 0,
   "joint_5": 0,
   "joint_6": CAMERA_UPRIGHT
 })
 # dummy initial pose
-orient = Quaternion(*tf.transformations.quaternion_from_euler(np.pi/2,3*np.pi/4,np.pi/2))
-pose = Pose(Point( 0.75, 0, 0.75), orient)
+orient = Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
+pose = Pose(Point( 0.75, 0, 0.9), orient)
 #group.set_pose_target(pose)
 success = group.go(True)
 if not success:
@@ -91,11 +99,11 @@ roll_constraint = OrientationConstraint()
 roll_constraint.header.frame_id = robot.get_planning_frame()
 # The link that must be oriented upwards
 roll_constraint.link_name = "J6"
-roll_constraint.orientation = Quaternion(*tf.transformations.quaternion_from_euler(np.pi/2,-np.pi/4,np.pi/2))
+roll_constraint.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
 # Allow rotation of 45 degrees around the x and y axis
 roll_constraint.absolute_x_axis_tolerance = np.pi/4 #Allow max rotation of x degrees
-roll_constraint.absolute_y_axis_tolerance = np.pi/2
-roll_constraint.absolute_z_axis_tolerance = np.pi
+roll_constraint.absolute_y_axis_tolerance = np.pi/4
+roll_constraint.absolute_z_axis_tolerance = np.pi/4
 # The roll constraint is the only constraint
 roll_constraint.weight = 1
 #constraint.orientation_constraints = [roll_constraint]
@@ -142,12 +150,6 @@ while not rospy.is_shutdown():
 	pose.orientation = look_at(forward)
 
 	group.set_pose_target(pose)
-   	group.go(True)
-        group.stop()
-	# offset camera
-        joints_pos = group.get_current_joint_values()
-        joints_pos[5] -= CAMERA_UPRIGHT
-        group.set_joint_value_target(joints_pos)
    	success = group.go(True)
         group.stop()
         # It is always good to clear your targets after planning with poses.
@@ -156,7 +158,7 @@ while not rospy.is_shutdown():
 	if not success:
 	        rospy.logerr('\nFailed for position:\n\n{}\n\n'.format(pose))
 	else:
-		rospy.loginfo('\nMoved to position:\n\n{}\n\n'.format(pose))
+		rospy.loginfo('\nMoved to position:\n{}\njoints values:\n{}\n'.format(pose,group.get_current_joint_values()))
 
 	i += 1
         if i == len(rr):

@@ -272,7 +272,8 @@
         <joint name="camera_joint" type="fixed">
                 <child link="camera" />
                 <parent link="J6" />
-		<origin rpy="0.000000 0.000000 3.93000" xyz="0.000000 0.000000 0.000000" />
+		<origin rpy="0.000000 -1.570796 0.785398" xyz="-0.033000 -0.033000 0.115000" />
+
         </joint>
 
 </robot>
