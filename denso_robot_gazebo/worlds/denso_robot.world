@@ -563,7 +563,8 @@
         </axis>
       </joint>
       <link name='camera'>
-        <pose frame=''>-0.048 -0.033 1.3 0 -1.570796 0.785398</pose>
+        <!--<pose frame=''>0.048 0.033 1.3 0 0 0.785398</pose>-->
+        <pose frame=''>0.018 0.033 1.3 0 0 -0.785398</pose>
         <inertial>
           <pose frame=''>0 0 0 0 0 0</pose>
           <mass>1</mass>
@@ -611,7 +612,7 @@
         <kinematic>0</kinematic>
         <gravity>1</gravity>
         <sensor name='camera_sensor' type='camera'>
-          <!--<pose>0.048 0 0.113 3.14 -1.57 0</pose> -->
+          <pose>0 0 0 0 -1.57079632679 -1.57079632679</pose>
           <camera>
             <save enabled="false">
               <path>/tmp/camera_save</path>
