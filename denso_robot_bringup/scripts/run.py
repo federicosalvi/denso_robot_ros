@@ -10,6 +10,7 @@ import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 import image_geometry
+import os
 def normalize(v):
     v = np.array(v)
     return v/np.linalg.norm(v)
@@ -26,7 +27,7 @@ def look_at(forward):
     up = np.cross(forward, left)
 
     # we're switching the axis since the camera "points" along the z-axis
-    R = np.vstack((left, up, forward)).T
+    R = np.vstack((-left, -up, forward)).T
 
     sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
     singular = sy < 1e-6
@@ -45,23 +46,26 @@ def transform_pose(pose, target_frame='camera', source_frame='world'):
   targetPose.header.stamp = rospy.Time.now()
   targetPose.header.frame_id = source_frame
   targetPose.pose = pose
-  # wait until the transform can be performed
-  while not tfBuffer.can_transform(target_frame, source_frame, rospy.Time()) and not rospy.is_shutdown():
-    pass
-  transform = tfBuffer.lookup_transform(target_frame, source_frame, rospy.Time()) #, rospy.Duration(1))
+  rospy.sleep(1)
+
+  transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time().now(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
   transformed_pose = tf2_geometry_msgs.do_transform_pose(targetPose, transform).pose
   # wait until the camera is in position
-  while np.abs(transformed_pose.position.y) > 0.05 and not rospy.is_shutdown():
-    transform = tfBuffer.lookup_transform(target_frame, source_frame, rospy.Time()) #, rospy.Duration(1))
+  while np.abs(transformed_pose.position.y) > 0.001 and not rospy.is_shutdown():
+    transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time().now(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
     transformed_pose = tf2_geometry_msgs.do_transform_pose(targetPose, transform).pose
   return transform, transformed_pose
 
-def transform_point(point, target_frame='camera', source_frame='world'):
-  targetPoint = PointStamped()
-  targetPoint.header.stamp = rospy.Time.now()
-  targetPoint.header.frame_id = source_frame
-  targetPoint.point = point
-  return tfBuffer.transformPoint(target_frame, targetPoint)
+def transform_points(points, target_frame='camera', source_frame='world'):
+  transformed_points = np.empty((2, points.shape[1]))
+  for i,point in enumerate(points):
+    targetPoint = PointStamped()
+    targetPoint.header.stamp = rospy.Time.now()
+    targetPoint.header.frame_id = source_frame
+    targetPoint.point = Point(*point)
+    transformed_point = tf_listener.transformPoint(target_frame, targetPoint)
+    transformed_points[i] = vector_from_point(transformed_point, vertical=False)
+  return transformed_points
 
 def take_picture(file_path):
   image_msg = rospy.wait_for_message('/camera/image_color', Image)
@@ -75,19 +79,8 @@ def proj_to_camera(points, rotation_matrix, translation_vector, camera_params):
 
 	# camera parameters
 	A = np.array(camera_params.K).reshape(3,3)
-
 #	distortion_coeffs = np.array(camera_params.D)
-	# invert axes???
-#	# x y z -> -z y x
-#	rotation_matrix = rotation_matrix[:,[2,1,0]]
-#	rotation_matrix[:,0] = -rotation_matrix[:,0]
-#	translation_vector = translation_vector[[2,1,0]]
-#	translation_vector[0] = -translation_vector[0]
 
-#	# x y z -> z x y
-#	rotation_matrix = rotation_matrix[:,[2,0,1]]
-#	translation_vector = translation_vector[[2,0,1]]
-#	rospy.loginfo('rotation matrix after conversion:\n{}'.format(rotation_matrix))
 	rt = np.concatenate((rotation_matrix, translation_vector), axis=1)
 	rospy.loginfo('rt:\n{}'.format(rt))
 
@@ -104,8 +97,11 @@ def load_camera_parameters():
 def rotm_from_quaternion(quaternion):
 	return tf.transformations.quaternion_matrix([quaternion.x, quaternion.y, quaternion.z, quaternion.w])[:3,:3]
 
-def vector_from_point(point):
-	return np.array([[point.x], [point.y], [point.z]])
+def vector_from_point(point, vertical=True):
+	if vertical:
+		return np.array([[point.x], [point.y], [point.z]])
+	else:
+		return np.array([point.x, point.y, point.z])
 
 moveit_commander.roscpp_initialize(sys.argv)
 rospy.init_node('vs_move_arm',anonymous=True)
@@ -114,20 +110,21 @@ group = moveit_commander.MoveGroupCommander("arm")
 robot = moveit_commander.RobotCommander()
 
 camera_params = load_camera_parameters()
-tfBuffer = tf2_ros.Buffer()
-listener = tf2_ros.TransformListener(tfBuffer)
-
+tf_buffer = tf2_ros.Buffer()
+listener = tf2_ros.TransformListener(tf_buffer)
 bridge = CvBridge()
+
+rospy.sleep(2)
 
 plane_pose = PoseStamped()
 plane_pose.header.frame_id = robot.get_planning_frame()
-#plane_pose.header.stamp = rospy.Time.now()
+plane_pose.header.stamp = rospy.Time.now()
 scene.add_plane('plane', plane_pose)
 
 # this is just a piece of marble that we don't want the robot to smash into
 marble_pose = PoseStamped()
 marble_pose.header.frame_id = robot.get_planning_frame()
-#marble_pose.header.stamp = rospy.Time.now()
+marble_pose.header.stamp = rospy.Time.now()
 marble_pose.pose.position.x = 0
 marble_pose.pose.position.y = 0.28575
 marble_pose.pose.position.z = 0.0635
@@ -138,7 +135,7 @@ target_centroid = Point(1, 0, 0.113)
 
 target_pose = PoseStamped()
 target_pose.header.frame_id = robot.get_planning_frame()
-#target_pose.header.stamp = rospy.Time.now()
+target_pose.header.stamp = rospy.Time.now()
 target_pose.pose.position = target_centroid
 target_pose.pose.orientation =  Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
 half_target_width = 0.113
@@ -156,21 +153,20 @@ target_corners = np.array([
 	[target_centroid.x + half_target_width, target_centroid.y + half_target_length, target_centroid.z + half_target_height]  # max x, max y, max z
 ])
 target_corners = np.concatenate((np.transpose(target_corners), np.ones((1,8))), axis=0)
-rospy.loginfo(target_corners)
+
 scene.add_box('driller', target_pose, size=(half_target_width*2, half_target_length*2, half_target_height*2))
 
 group.set_max_acceleration_scaling_factor(0.1)
 group.set_max_velocity_scaling_factor(0.25)
 
-
-CAMERA_UPRIGHT = -0.79
+CAMERA_UPRIGHT = np.pi-0.79
 
 group.set_joint_value_target({
   "joint_1": 0,
   "joint_2": -np.pi/4,
   "joint_3": 3*np.pi/4,
-  "joint_4": np.pi,
-  "joint_5": -np.pi/4,
+  "joint_4": 0,
+  "joint_5": np.pi/4,
   "joint_6": CAMERA_UPRIGHT
 })
 # dummy initial pose
@@ -197,21 +193,28 @@ roll_constraint.absolute_z_axis_tolerance = np.pi/2
 roll_constraint.weight = 1
 #constraint.orientation_constraints = [roll_constraint]
 
+joint_4_constraint = JointConstraint()
+joint_4_constraint.joint_name = "joint_4"
+joint_4_constraint.position = 0
+joint_4_constraint.tolerance_above = np.pi/2
+joint_4_constraint.tolerance_below = np.pi/2
+joint_4_constraint.weight = 1
+
 joint_5_constraint = JointConstraint()
 joint_5_constraint.joint_name = "joint_5"
-joint_5_constraint.position = 0
-joint_5_constraint.tolerance_above = np.pi
-joint_5_constraint.tolerance_below = np.pi/12
+joint_5_constraint.position = np.pi/2
+joint_5_constraint.tolerance_above = np.pi/2
+joint_5_constraint.tolerance_below = np.pi/2
 joint_5_constraint.weight = 1
 
 joint_6_constraint = JointConstraint()
 joint_6_constraint.joint_name = "joint_6"
 joint_6_constraint.position = CAMERA_UPRIGHT
-joint_6_constraint.tolerance_above = np.pi/2
-joint_6_constraint.tolerance_below = np.pi/2
+joint_6_constraint.tolerance_above = np.pi
+joint_6_constraint.tolerance_below = np.pi
 joint_6_constraint.weight = 1
 
-#constraint.joint_constraints = [joint_6_constraint] # [joint_5_constraint, joint_6_constraint]
+constraint.joint_constraints = [joint_4_constraint, joint_5_constraint, joint_6_constraint]
 group.set_path_constraints(constraint)
 
 n_samples = 5
@@ -225,6 +228,10 @@ rr, ss , tt = np.meshgrid(r,s,t)
 rr = rr.flatten()
 ss = ss.flatten()
 tt = tt.flatten()
+
+dir = '/tmp/pictures/'
+for file in os.listdir(dir):
+  os.remove(dir + file)
 
 i = 0
 while not rospy.is_shutdown():
@@ -245,19 +252,19 @@ while not rospy.is_shutdown():
 
 	frame_transform, object_pose = transform_pose(target_pose.pose)
 	rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
-#	rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
-
+	rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
 	rotation_matrix = rotm_from_quaternion(frame_transform.transform.rotation)
 	translation_vector = vector_from_point(frame_transform.transform.translation)
 	rospy.loginfo('\nTransform:\n\trotation matrix:\n{}\n\ttranslation vector:\n{}\n'.format(rotation_matrix, translation_vector))
 
 	# project 3d points onto image plane
+	#transformed_target_corners = transform_points(target_corners)
 	proj_points = proj_to_camera(target_corners, rotation_matrix, translation_vector, camera_params)
 	rospy.loginfo('Projected points:\n{}'.format(proj_points.T))
 
         # take picture and write labels
-	take_picture('/tmp/pictures/img_{}.jpg'.format(i))
-	f = open('/tmp/pictures/label_{}.txt'.format(i),'w+')
+	take_picture('{}img_{}.jpg'.format(dir,i))
+	f = open('{}label_{}.txt'.format(dir,i),'w+')
         output = ''
 	for x,y in proj_points.T:
 		output += str(x) + ' ' + str(y) + ' '
