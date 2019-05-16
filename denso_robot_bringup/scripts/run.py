@@ -11,6 +11,8 @@ from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 import image_geometry
 import os
+from MeshPly import MeshPly
+
 def normalize(v):
     v = np.array(v)
     return v/np.linalg.norm(v)
@@ -131,30 +133,61 @@ marble_pose.pose.position.z = 0.0635
 scene.add_box('marble', marble_pose, size=(4,0.2794,0.127))
 
 
-target_centroid = Point(1, 0, 0.113)
+def get_3D_corners(vertices, origin=[0,0,0]):
 
+    min_x = np.min(vertices[0,:]) + origin[0]
+    max_x = np.max(vertices[0,:]) + origin[0]
+    min_y = np.min(vertices[1,:]) + origin[1]
+    max_y = np.max(vertices[1,:]) + origin[1]
+    min_z = np.min(vertices[2,:]) + origin[2]
+    max_z = np.max(vertices[2,:]) + origin[2]
+
+    corners = np.array([[min_x, min_y, min_z],
+                        [min_x, min_y, max_z],
+                        [min_x, max_y, min_z],
+                        [min_x, max_y, max_z],
+                        [max_x, min_y, min_z],
+                        [max_x, min_y, max_z],
+                        [max_x, max_y, min_z],
+                        [max_x, max_y, max_z]])
+
+    corners = np.concatenate((np.transpose(corners), np.ones((1,8)) ), axis=0)
+    return corners
+
+def get_box_size(corners):
+    # width, length and height
+    return corners[0,-1] - corners[0,0], corners[1,-1] - corners[1,0], corners[2,-1] - corners[2,0]
+
+mesh = MeshPly('/root/catkin_ws/bracket.ply')
+vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
+target_corners = get_3D_corners(vertices, [1,0,0])
+target_width, target_length, target_height = get_box_size(target_corners)
+rospy.loginfo(get_box_size(target_corners))
+target_centroid = Point(1, 0, target_height/2)
+
+target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
+rospy.loginfo(target_points)
 target_pose = PoseStamped()
 target_pose.header.frame_id = robot.get_planning_frame()
 target_pose.header.stamp = rospy.Time.now()
 target_pose.pose.position = target_centroid
 target_pose.pose.orientation =  Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
-half_target_width = 0.113
-half_target_length = 0.0444
-half_target_height = 0.113
+#half_target_width = 0.113
+#half_target_length = 0.0444
+#half_target_height = 0.113
 
-target_corners = np.array([
-	[target_centroid.x - half_target_width, target_centroid.y - half_target_length, target_centroid.z - half_target_height], # min x, min y, min z
-	[target_centroid.x - half_target_width, target_centroid.y - half_target_length, target_centroid.z + half_target_height], # min x, min y, max z
-	[target_centroid.x - half_target_width, target_centroid.y + half_target_length, target_centroid.z - half_target_height], # min x, max y, min z
-	[target_centroid.x - half_target_width, target_centroid.y + half_target_length, target_centroid.z + half_target_height], # min x, max y, max z
-	[target_centroid.x + half_target_width, target_centroid.y - half_target_length, target_centroid.z - half_target_height], # max x, min y, min z
-	[target_centroid.x + half_target_width, target_centroid.y - half_target_length, target_centroid.z + half_target_height], # max x, min y, max z
-	[target_centroid.x + half_target_width, target_centroid.y + half_target_length, target_centroid.z - half_target_height], # max x, max y, min z
-	[target_centroid.x + half_target_width, target_centroid.y + half_target_length, target_centroid.z + half_target_height]  # max x, max y, max z
-])
-target_corners = np.concatenate((np.transpose(target_corners), np.ones((1,8))), axis=0)
+#target_corners = np.array([
+#	[target_centroid.x - half_target_width, target_centroid.y - half_target_length, target_centroid.z - half_target_height], # min x, min y, min z
+#	[target_centroid.x - half_target_width, target_centroid.y - half_target_length, target_centroid.z + half_target_height], # min x, min y, max z
+#	[target_centroid.x - half_target_width, target_centroid.y + half_target_length, target_centroid.z - half_target_height], # min x, max y, min z
+#	[target_centroid.x - half_target_width, target_centroid.y + half_target_length, target_centroid.z + half_target_height], # min x, max y, max z
+#	[target_centroid.x + half_target_width, target_centroid.y - half_target_length, target_centroid.z - half_target_height], # max x, min y, min z
+#	[target_centroid.x + half_target_width, target_centroid.y - half_target_length, target_centroid.z + half_target_height], # max x, min y, max z
+#	[target_centroid.x + half_target_width, target_centroid.y + half_target_length, target_centroid.z - half_target_height], # max x, max y, min z
+#	[target_centroid.x + half_target_width, target_centroid.y + half_target_length, target_centroid.z + half_target_height]  # max x, max y, max z
+#])
 
-scene.add_box('driller', target_pose, size=(half_target_width*2, half_target_length*2, half_target_height*2))
+scene.add_box('target', target_pose, size=(target_width, target_length, target_height))
 
 group.set_max_acceleration_scaling_factor(0.1)
 group.set_max_velocity_scaling_factor(0.25)
@@ -259,16 +292,21 @@ while not rospy.is_shutdown():
 
 	# project 3d points onto image plane
 	#transformed_target_corners = transform_points(target_corners)
-	proj_points = proj_to_camera(target_corners, rotation_matrix, translation_vector, camera_params)
-	rospy.loginfo('Projected points:\n{}'.format(proj_points.T))
+	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
+	rospy.loginfo('Projected points:\n{}'.format(proj_points))
 
         # take picture and write labels
 	take_picture('{}img_{}.jpg'.format(dir,i))
 	f = open('{}label_{}.txt'.format(dir,i),'w+')
-        output = ''
-	for x,y in proj_points.T:
+        output = '42 ' # class label
+
+	# 2D coordinates of centroid and 8 corners
+	for x,y in proj_points:
 		output += str(x) + ' ' + str(y) + ' '
-	f.write(output[:-1])
+
+	# xrange and yrange
+	output += str(np.max(proj_points[:,0])-np.min(proj_points[:,0])) + ' ' + str(np.max(proj_points[:,1])-np.min(proj_points[:,1]))
+	f.write(output)
 	f.close()
 
 	i += 1
