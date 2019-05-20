@@ -563,7 +563,7 @@
         </axis>
       </joint>
       <link name='camera'>
-        <pose frame=''>0.018 0.033 1.3 0 -0 2.35619</pose>
+        <pose frame=''>0.018 0.033 1.255 0 -0 2.35619</pose>
         <inertial>
           <pose frame=''>0 0 0 0 -0 0</pose>
           <mass>1</mass>
@@ -1067,7 +1067,7 @@
           </surface>
         </collision>
       </link>
-      <static>0</static>
+      <static>1</static>
       <allow_auto_disable>1</allow_auto_disable>
       <pose frame=''>1 0 0 0 -0 0</pose>
     </model>

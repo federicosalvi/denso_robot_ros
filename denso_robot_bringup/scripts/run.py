@@ -49,9 +49,9 @@ def transform_pose(pose, target_frame='camera', source_frame='world'):
   targetPose.header.stamp = rospy.Time.now()
   targetPose.header.frame_id = source_frame
   targetPose.pose = pose
-  rospy.sleep(1)
+  rospy.sleep(2)
 
-  transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time().now(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
+  transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
   transformed_pose = tf2_geometry_msgs.do_transform_pose(targetPose, transform).pose
   # wait until the camera is in position
   while np.abs(transformed_pose.position.y) > 0.001 and not rospy.is_shutdown():
@@ -108,7 +108,7 @@ def vector_from_point(point, vertical=True):
 
 def rotate_random(m, low=-60, high=60.0):
     angle = low + np.random.sample()*(high-low)
-    rospy.loginfo('\nangle of rotation:{}\n'.format(angle))
+    #rospy.loginfo('\nangle of rotation:{}\n'.format(angle))
     angle = angle*np.pi/180
     return m.dot([[np.cos(angle),-np.sin(angle),0],[np.sin(angle),np.cos(angle),0],[0,0,1]])
 
@@ -215,7 +215,7 @@ group.set_joint_value_target({
 orient = Quaternion(*tf.transformations.quaternion_from_euler(0,np.pi/4,0))
 pose = Pose(Point( 0.7, 0, 0.5), orient)
 #group.set_pose_target(pose)
-success = group.go(True)
+success = group.go(True, wait=True)
 group.stop()
 
 constraint = Constraints()
@@ -261,11 +261,11 @@ group.set_path_constraints(constraint)
 
 n_samples = 5
 # radii
-r = np.linspace(0.6, 0.9, n_samples)
+r = np.linspace(0.7, 1.1, n_samples)
 # rotation around y axis
 s = np.linspace(np.pi/4, np.pi/2.5, n_samples)
 # rotation around z axis
-t = np.linspace(3*np.pi/4, 5*np.pi/4, n_samples)
+t = np.linspace(-np.pi/4, np.pi/4, n_samples)
 rr, ss , tt = np.meshgrid(r,s,t)
 rr = rr.flatten()
 ss = ss.flatten()
@@ -278,7 +278,7 @@ for file in os.listdir(dir):
 i = 0
 sphere_origin = target_centroid
 while not rospy.is_shutdown():
-	pose.position = sample_sphere(rr[i], ss[i], tt[i], offset=sphere_origin)
+	pose.position = sample_sphere(rr[i], ss[i], tt[i]) # , offset=sphere_origin)
         forward = normalize([
 		target_centroid.x - pose.position.x,
 		target_centroid.y - pose.position.y,
@@ -287,7 +287,7 @@ while not rospy.is_shutdown():
 	pose.orientation = look_at(forward)
 
 	group.set_pose_target(pose)
-   	success = group.go(True)
+   	success = group.go(True, wait=True)
         group.stop()
         group.clear_pose_targets()
 
@@ -300,17 +300,18 @@ while not rospy.is_shutdown():
 			i += 1
 			continue
 
+	rospy.sleep(2)
 	frame_transform, object_pose = transform_pose(target_pose.pose)
-	rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
-	rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
+	#rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
+	#rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
 	rotation_matrix = rotm_from_quaternion(frame_transform.transform.rotation)
 	translation_vector = vector_from_point(frame_transform.transform.translation)
-	rospy.loginfo('\nTransform:\n\trotation matrix:\n{}\n\ttranslation vector:\n{}\n'.format(rotation_matrix, translation_vector))
+	#rospy.loginfo('\nTransform:\n\trotation matrix:\n{}\n\ttranslation vector:\n{}\n'.format(rotation_matrix, translation_vector))
 
 	# project 3d points onto image plane
 	#transformed_target_corners = transform_points(target_corners)
 	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
-	rospy.loginfo('Projected points:\n{}'.format(proj_points))
+	#rospy.loginfo('Projected points:\n{}'.format(proj_points))
 
         # take picture and write labels
 	take_picture('{}img_{}.jpg'.format(dir,i))

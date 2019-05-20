@@ -2,3 +2,4 @@ denso_robot_moveit_config/default_warehouse_mongo_db/journal/
 denso_robot_moveit_config/default_warehouse_mongo_db/local.0
 denso_robot_moveit_config/default_warehouse_mongo_db/local.ns
 denso_robot_moveit_config/default_warehouse_mongo_db/mongod.lock
+*.pyc

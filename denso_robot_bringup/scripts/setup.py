@@ -30,9 +30,6 @@ def look_at(forward):
 
     # we're switching the axis since the camera "points" along the z-axis
     R = np.vstack((-left, -up, forward)).T
-    rospy.loginfo('\nBefore random rotation:\n{}\n'.format(R))
-    R = rotate_random(R)
-    rospy.loginfo('\nAfter random rotation:\n{}\n'.format(R))
 
     sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
     singular = sy < 1e-6
@@ -51,9 +48,9 @@ def transform_pose(pose, target_frame='camera', source_frame='world'):
   targetPose.header.stamp = rospy.Time.now()
   targetPose.header.frame_id = source_frame
   targetPose.pose = pose
-  rospy.sleep(1)
+  rospy.sleep(2)
 
-  transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time().now(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
+  transform = tf_buffer.lookup_transform_full(target_frame, rospy.Time(), source_frame, rospy.Time(), 'world', rospy.Duration(10.0))
   transformed_pose = tf2_geometry_msgs.do_transform_pose(targetPose, transform).pose
   # wait until the camera is in position
   while np.abs(transformed_pose.position.y) > 0.001 and not rospy.is_shutdown():
@@ -88,11 +85,14 @@ def publish_image_with_points(points):
   corners = points[1:]
   try:
     cv2_img = bridge.imgmsg_to_cv2(image_msg, 'bgr8')
+    cv2.circle(cv2_img, tuple(points[0]), 1, (255,0,0),4)
+    cv2.line(cv2_img, (0, cv2_img.shape[0]/2), (cv2_img.shape[1], cv2_img.shape[0]/2), (0,0,255),2)
+    cv2.line(cv2_img, (cv2_img.shape[1]/2, 0), (cv2_img.shape[1]/2, cv2_img.shape[0]), (0,0,255),2)
 
     for edge in edges_corners:
 	start, end = corners[edge]
 	cv2.line(cv2_img,tuple(start),tuple(end),(255,0,0),3)
-        pub.publish(bridge.cv2_to_imgmsg(cv2_img, encoding='rgb8'))
+    pub.publish(bridge.cv2_to_imgmsg(cv2_img, encoding='bgr8'))
   except CvBridgeError as e:
     print(e)
 
@@ -302,7 +302,7 @@ while not rospy.is_shutdown():
 	pose.orientation = look_at(forward)
 
 	group.set_pose_target(pose)
-   	success = group.go(True)
+   	success = group.go(True, wait=True)
         group.stop()
         group.clear_pose_targets()
 
@@ -321,5 +321,8 @@ while not rospy.is_shutdown():
 	rospy.loginfo('Projected points:\n{}'.format(proj_points))
 
 	publish_image_with_points(proj_points)
+	i += 1
+	if i == len(rr):
+		i = 0
 
 moveit_commander.roscpp_shutdown()
