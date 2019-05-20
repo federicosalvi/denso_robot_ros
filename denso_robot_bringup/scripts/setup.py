@@ -17,11 +17,11 @@ def normalize(v):
     v = np.array(v)
     return v/np.linalg.norm(v)
 
-def sample_sphere(r, s, t, offset=Point(0,0,0)):
+def sample_sphere(r, s, t):
     x = r * np.cos(t) * np.sin(s)
     y = r * np.sin(t) * np.sin(s)
     z = r * np.cos(s)
-    return Point(x+offset.x,y+offset.y,z+offset.z)
+    return Point(x,y,z)
 
 def look_at(forward):
     camera_up = np.array([0,0,1])
@@ -30,7 +30,9 @@ def look_at(forward):
 
     # we're switching the axis since the camera "points" along the z-axis
     R = np.vstack((-left, -up, forward)).T
+    rospy.loginfo('\nBefore random rotation:\n{}\n'.format(R))
     R = rotate_random(R)
+    rospy.loginfo('\nAfter random rotation:\n{}\n'.format(R))
 
     sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
     singular = sy < 1e-6
@@ -78,6 +80,22 @@ def take_picture(file_path):
   except CvBridgeError as e:
     print(e)
 
+pub = rospy.Publisher('/camera/camera_with_points', Image, queue_size=10)
+
+def publish_image_with_points(points):
+  image_msg = rospy.wait_for_message('/camera/image_color', Image)
+  edges_corners = [[0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3], [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7]]
+  corners = points[1:]
+  try:
+    cv2_img = bridge.imgmsg_to_cv2(image_msg, 'bgr8')
+
+    for edge in edges_corners:
+	start, end = corners[edge]
+	cv2.line(cv2_img,tuple(start),tuple(end),(255,0,0),3)
+        pub.publish(bridge.cv2_to_imgmsg(cv2_img, encoding='rgb8'))
+  except CvBridgeError as e:
+    print(e)
+
 def proj_to_camera(points, rotation_matrix, translation_vector, camera_params):
 
 	# camera parameters
@@ -112,8 +130,6 @@ def rotate_random(m, low=-60, high=60.0):
     angle = angle*np.pi/180
     return m.dot([[np.cos(angle),-np.sin(angle),0],[np.sin(angle),np.cos(angle),0],[0,0,1]])
 
-def point_difference(a,b):
-    return np.linalg.norm(vector_from_point(a, vertical=False)-vector_from_point(b,vertical=False))
 moveit_commander.roscpp_initialize(sys.argv)
 rospy.init_node('vs_move_arm',anonymous=True)
 scene = PlanningSceneInterface()
@@ -261,11 +277,11 @@ group.set_path_constraints(constraint)
 
 n_samples = 5
 # radii
-r = np.linspace(0.6, 0.9, n_samples)
+r = np.linspace(0.9, 0.9, n_samples)
 # rotation around y axis
-s = np.linspace(np.pi/4, np.pi/2.5, n_samples)
+s = np.linspace(np.pi/4, np.pi/3, n_samples)
 # rotation around z axis
-t = np.linspace(3*np.pi/4, 5*np.pi/4, n_samples)
+t = np.linspace(-np.pi/4, np.pi/4, n_samples)
 rr, ss , tt = np.meshgrid(r,s,t)
 rr = rr.flatten()
 ss = ss.flatten()
@@ -276,9 +292,8 @@ for file in os.listdir(dir):
   os.remove(dir + file)
 
 i = 0
-sphere_origin = target_centroid
 while not rospy.is_shutdown():
-	pose.position = sample_sphere(rr[i], ss[i], tt[i], offset=sphere_origin)
+	pose.position = sample_sphere(rr[i], ss[i], tt[i])
         forward = normalize([
 		target_centroid.x - pose.position.x,
 		target_centroid.y - pose.position.y,
@@ -292,13 +307,6 @@ while not rospy.is_shutdown():
         group.clear_pose_targets()
 
 	#rospy.loginfo('\nMoved to position:\n{}\njoints values:\n{}\n'.format(pose,group.get_current_joint_values()))
-	if not success:
-		actual = group.get_current_pose().pose.position
-		difference = point_difference(pose.position,actual)
-		if difference > 1e-02:
-			rospy.logerr('\nFailed for position:\n{}\n'.format(pose))
-			i += 1
-			continue
 
 	frame_transform, object_pose = transform_pose(target_pose.pose)
 	rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
@@ -312,24 +320,6 @@ while not rospy.is_shutdown():
 	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
 	rospy.loginfo('Projected points:\n{}'.format(proj_points))
 
-        # take picture and write labels
-	take_picture('{}img_{}.jpg'.format(dir,i))
-	f = open('{}label_{}.txt'.format(dir,i),'w+')
-        output = '42 ' # class label
-
-	# 2D coordinates of centroid and 8 corners
-	for x,y in proj_points:
-		output += str(x) + ' ' + str(y) + ' '
-
-	# xrange and yrange
-	output += str(np.max(proj_points[:,0])-np.min(proj_points[:,0])) + ' ' + str(np.max(proj_points[:,1])-np.min(proj_points[:,1]))
-	f.write(output)
-	f.close()
-
-	i += 1
-        if i == len(rr):
-		rospy.loginfo('Finished')
-		break
-
+	publish_image_with_points(proj_points)
 
 moveit_commander.roscpp_shutdown()

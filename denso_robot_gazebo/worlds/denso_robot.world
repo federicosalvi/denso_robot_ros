@@ -637,10 +637,10 @@
             <cameraInfoTopicName>camera_info</cameraInfoTopicName>
             <frameName>camera_link</frameName>
             <hackBaseline>0.07</hackBaseline>
-            <distortionK1>0.0</distortionK1>
-            <distortionK2>0.0</distortionK2>
-            <distortionK3>0.0</distortionK3>
-            <distortionT1>0.0</distortionT1>
+            <distortionK1>-0.332329</distortionK1>
+            <distortionK2>0.108676</distortionK2>
+            <distortionK3>-0.000192</distortionK3>
+            <distortionT1>-0.000142</distortionT1>
             <distortionT2>0.0</distortionT2>
           </plugin>
         </sensor>
