@@ -59,13 +59,13 @@ def transform_pose(pose, target_frame='camera', source_frame='world'):
   return transform, transformed_pose
 
 def transform_points(points, target_frame='camera', source_frame='world'):
-  transformed_points = np.empty((2, points.shape[1]))
+  transformed_points = np.empty((3, points.shape[1]))
   for i,point in enumerate(points):
     targetPoint = PointStamped()
     targetPoint.header.stamp = rospy.Time.now()
     targetPoint.header.frame_id = source_frame
-    targetPoint.point = Point(*point)
-    transformed_point = tf_listener.transformPoint(target_frame, targetPoint)
+    targetPoint.point = Point(*point[:3])
+    transformed_point = tf_buffer.transform(targetPoint, target_frame, rospy.Duration(10.0))
     transformed_points[i] = vector_from_point(transformed_point, vertical=False)
   return transformed_points
 
@@ -130,6 +130,17 @@ def rotate_random(m, low=-60, high=60.0):
     angle = angle*np.pi/180
     return m.dot([[np.cos(angle),-np.sin(angle),0],[np.sin(angle),np.cos(angle),0],[0,0,1]])
 
+camera = image_geometry.PinholeCameraModel()
+
+def project(point):
+    targetPoint = PointStamped()
+    targetPoint.header.stamp = rospy.Time.now()
+    targetPoint.header.frame_id = 'world'
+    targetPoint.point = Point(*point[:3])
+    transformed_point = tf_buffer.transform(targetPoint, 'camera', rospy.Duration(10.0))
+
+    return camera.rectifyPoint(camera.project3dToPixel(vector_from_point(transformed_point.point)))
+
 moveit_commander.roscpp_initialize(sys.argv)
 rospy.init_node('vs_move_arm',anonymous=True)
 scene = PlanningSceneInterface()
@@ -137,6 +148,7 @@ group = moveit_commander.MoveGroupCommander("arm")
 robot = moveit_commander.RobotCommander()
 
 camera_params = load_camera_parameters()
+camera.fromCameraInfo(camera_params)
 tf_buffer = tf2_ros.Buffer()
 listener = tf2_ros.TransformListener(tf_buffer)
 bridge = CvBridge()
@@ -305,6 +317,7 @@ while not rospy.is_shutdown():
    	success = group.go(True, wait=True)
         group.stop()
         group.clear_pose_targets()
+	rospy.sleep(2)
 
 	#rospy.loginfo('\nMoved to position:\n{}\njoints values:\n{}\n'.format(pose,group.get_current_joint_values()))
 
@@ -319,8 +332,12 @@ while not rospy.is_shutdown():
 	#transformed_target_corners = transform_points(target_corners)
 	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
 	rospy.loginfo('Projected points:\n{}'.format(proj_points))
+        proj_points = []
+        for point in target_points.T:
+                proj_point = project(point)
+                proj_points.append([int(proj_point[0]), int(proj_point[1])])
 
-	publish_image_with_points(proj_points)
+	publish_image_with_points(np.array(proj_points))
 	i += 1
 	if i == len(rr):
 		i = 0

@@ -563,7 +563,7 @@
         </axis>
       </joint>
       <link name='camera'>
-        <pose frame=''>0.018 0.033 1.255 0 -0 2.35619</pose>
+        <pose frame=''>0.018 0.033 1.2525 0 -0 2.35619</pose>
         <inertial>
           <pose frame=''>0 0 0 0 -0 0</pose>
           <mass>1</mass>
@@ -612,7 +612,7 @@
         <gravity>1</gravity>
         <sensor name='camera_sensor' type='camera'>
           <pose frame=''>0 0 0 3.14158 -1.57079 -1.57077</pose>
-          <camera name='__default__'>
+          <camera name='camera'>
             <save enabled='0'>
               <path>/tmp/camera_save</path>
             </save>
@@ -635,13 +635,15 @@
             <cameraName>/camera</cameraName>
             <imageTopicName>image_color</imageTopicName>
             <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-            <frameName>camera_link</frameName>
-            <hackBaseline>0.07</hackBaseline>
+            <frameName>camera</frameName>
+            <Cx>644</Cx>
+            <Cy>482</Cy>
+         <!--   <hackBaseline>0.07</hackBaseline>
             <distortionK1>-0.332329</distortionK1>
             <distortionK2>0.108676</distortionK2>
             <distortionK3>-0.000192</distortionK3>
             <distortionT1>-0.000142</distortionT1>
-            <distortionT2>0.0</distortionT2>
+            <distortionT2>0.0</distortionT2>-->
           </plugin>
         </sensor>
       </link>
