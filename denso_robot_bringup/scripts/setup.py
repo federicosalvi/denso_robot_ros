@@ -85,9 +85,7 @@ def publish_image_with_points(points):
   corners = points[1:]
   try:
     cv2_img = bridge.imgmsg_to_cv2(image_msg, 'bgr8')
-    cv2.circle(cv2_img, tuple(points[0]), 1, (255,0,0),4)
-    cv2.line(cv2_img, (0, cv2_img.shape[0]/2), (cv2_img.shape[1], cv2_img.shape[0]/2), (0,0,255),2)
-    cv2.line(cv2_img, (cv2_img.shape[1]/2, 0), (cv2_img.shape[1]/2, cv2_img.shape[0]), (0,0,255),2)
+    cv2.circle(cv2_img, tuple(points[0]), 3, (255,0,0),4)
 
     for edge in edges_corners:
 	start, end = corners[edge]
@@ -170,36 +168,46 @@ marble_pose.pose.position.z = 0.0635
 scene.add_box('marble', marble_pose, size=(4,0.2794,0.127))
 
 
-def get_3D_corners(vertices, origin=[0,0,0]):
+def get_3D_corners(vertices, rotation=0, offset=[0,0,0]):
+    cos = np.cos(rotation)
+    sin = np.sin(rotation)
 
-    min_x = np.min(vertices[0,:]) + origin[0]
-    max_x = np.max(vertices[0,:]) + origin[0]
-    min_y = np.min(vertices[1,:]) + origin[1]
-    max_y = np.max(vertices[1,:]) + origin[1]
-    min_z = np.min(vertices[2,:]) + origin[2]
-    max_z = np.max(vertices[2,:]) + origin[2]
+    min_x = np.min(vertices[0,:])
+    max_x = np.max(vertices[0,:])
+    min_y = np.min(vertices[1,:])
+    max_y = np.max(vertices[1,:])
+    min_z = np.min(vertices[2,:])
+    max_z = np.max(vertices[2,:])
 
-    corners = np.array([[min_x, min_y, min_z],
-                        [min_x, min_y, max_z],
-                        [min_x, max_y, min_z],
-                        [min_x, max_y, max_z],
-                        [max_x, min_y, min_z],
-                        [max_x, min_y, max_z],
-                        [max_x, max_y, min_z],
-                        [max_x, max_y, max_z]])
+    corners = [[min_x, min_y, min_z],
+               [min_x, min_y, max_z],
+               [min_x, max_y, min_z],
+               [min_x, max_y, max_z],
+               [max_x, min_y, min_z],
+               [max_x, min_y, max_z],
+               [max_x, max_y, min_z],
+               [max_x, max_y, max_z]]
 
+    corners = np.array([[x*cos - y*sin + offset[0], x*sin + y*cos + offset[1], z + offset[2]] for x,y,z in corners])
     corners = np.concatenate((np.transpose(corners), np.ones((1,8)) ), axis=0)
     return corners
 
-def get_box_size(corners):
+def get_box_size(vertices):
     # width, length and height
-    return corners[0,-1] - corners[0,0], corners[1,-1] - corners[1,0], corners[2,-1] - corners[2,0]
+    min_x = np.min(vertices[0,:])
+    max_x = np.max(vertices[0,:])
+    min_y = np.min(vertices[1,:])
+    max_y = np.max(vertices[1,:])
+    min_z = np.min(vertices[2,:])
+    max_z = np.max(vertices[2,:])
+    return max_x - min_x, max_y - min_y, max_z - min_z
+
+rotation = 45
 
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
-target_corners = get_3D_corners(vertices, [1,0,0])
-target_width, target_length, target_height = get_box_size(target_corners)
-rospy.loginfo(get_box_size(target_corners))
+target_corners = get_3D_corners(vertices, rotation=rotation, offset=[1,0,0])
+target_width, target_length, target_height = get_box_size(vertices)
 target_centroid = Point(1, 0, target_height/2)
 
 target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
@@ -208,7 +216,7 @@ target_pose = PoseStamped()
 target_pose.header.frame_id = robot.get_planning_frame()
 target_pose.header.stamp = rospy.Time.now()
 target_pose.pose.position = target_centroid
-target_pose.pose.orientation =  Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
+target_pose.pose.orientation =  Quaternion(*tf.transformations.quaternion_from_euler(0,0,rotation))
 #half_target_width = 0.113
 #half_target_length = 0.0444
 #half_target_height = 0.113
@@ -298,10 +306,6 @@ rr, ss , tt = np.meshgrid(r,s,t)
 rr = rr.flatten()
 ss = ss.flatten()
 tt = tt.flatten()
-
-dir = '/tmp/pictures/'
-for file in os.listdir(dir):
-  os.remove(dir + file)
 
 i = 0
 while not rospy.is_shutdown():
