@@ -1,0 +1,30 @@
+<launch>
+  <!-- the "sim" argument controls whether we connect to a Simulated or Real robot -->
+  <!--  - if sim=false, a ip_address argument is required -->
+  <arg name="sim" default="true" />
+  <arg name="ip_address" default="192.168.0.1" />
+  <arg name="send_format" default="288" />
+  <arg name="recv_format" default="292" />
+  <arg name="camera_serial" default="16456230" />
+
+  
+  <!-- launch robot bringup node -->
+  <include file="$(find denso_robot_bringup)/launch/vs_6577_b_bringup.launch" >
+      <arg name="ip_address" value="$(arg ip_address)" />
+      <arg name="sim" value="$(arg sim)"/>
+      <arg name="send_format" value="$(arg send_format)" />
+      <arg name="recv_format" value="$(arg recv_format)" />
+      <arg name="async_slave" value="true" />
+  </include>
+
+  <group unless="$(arg sim)">
+    <include file="$(find pointgrey_camera_driver)/launch/camera.launch">
+      <arg name="camera_serial" value="$(arg camera_serial)" />
+      <arg name="calibrated" value="1" />
+    </include>
+  </group>  
+
+  <node name="moveit_scene" pkg="pose_dataset_tool"
+    type="moveit_scene.py" output="screen" />
+
+</launch>
