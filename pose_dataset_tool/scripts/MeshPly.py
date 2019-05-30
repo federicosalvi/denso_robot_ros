@@ -35,7 +35,7 @@ class MeshPly:
                         face_mode = True
                         idx = 0
                 elif face_mode:
-                    self.indices.append([float(i) for i in elements[1:4]])
+                    self.indices.append([int(i) for i in elements[1:4]])
                     idx += 1
                     if idx == nb_faces:
                         face_mode = False

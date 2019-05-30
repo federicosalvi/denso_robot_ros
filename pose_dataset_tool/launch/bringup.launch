@@ -6,6 +6,7 @@
   <arg name="send_format" default="288" />
   <arg name="recv_format" default="292" />
   <arg name="camera_serial" default="16456230" />
+  <arg name="no_camera" default="false" />
 
   
   <!-- launch robot bringup node -->
@@ -18,7 +19,7 @@
   </include>
 
   <group unless="$(arg sim)">
-    <include file="$(find pointgrey_camera_driver)/launch/camera.launch">
+    <include unless="$(arg no_camera)" file="$(find pointgrey_camera_driver)/launch/camera.launch">
       <arg name="camera_serial" value="$(arg camera_serial)" />
       <arg name="calibrated" value="1" />
     </include>
