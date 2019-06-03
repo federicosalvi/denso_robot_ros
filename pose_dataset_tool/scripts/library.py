@@ -244,7 +244,7 @@ def generate_meshgrid(n_samples=5):
     # rotation around y axis
     s = np.linspace(np.pi/4, np.pi/3, n_samples)
     # rotation around z axis
-    t = np.linspace(-np.pi/4, np.pi/4, n_samples)
+    t = np.linspace(-3*np.pi/4, -np.pi/4, n_samples)
     rr, ss , tt = np.meshgrid(r,s,t)
     rr = rr.flatten()
     ss = ss.flatten()

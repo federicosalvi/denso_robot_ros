@@ -9,7 +9,7 @@ scene = PlanningSceneInterface()
 robot = moveit_commander.RobotCommander()
 
 rospy.sleep(2)
-world_angle_offset = 0.033
+world_angle_offset = 0
 
 plane_pose = PoseStamped()
 plane_pose.header.frame_id = robot.get_planning_frame()

@@ -11,13 +11,13 @@
 	</joint>
 	<link name="base_link">
 		<visual>
-			<origin rpy="0 0 0" xyz="0 0 0" />
+			<origin rpy="0 0 -0.026179" xyz="0 0 0" />
 			<geometry>
 				<mesh filename="package://denso_robot_descriptions/vs_6577_b_description/base_link.dae" scale="1 1 1" />
 			</geometry>
 		</visual>
 		<collision>
-			<origin rpy="0 0 0" xyz="0 0 0" />
+			<origin rpy="0 0 -0.026179" xyz="0 0 0" />
 			<geometry>
 				<mesh filename="package://denso_robot_descriptions/vs_6577_b_description/base_link.dae" scale="1 1 1" />
 			</geometry>
@@ -272,7 +272,7 @@
         <joint name="camera_joint" type="fixed">
                 <child link="camera" />
                 <parent link="J6" />
-		<origin rpy="0.000000 0  2.356194" xyz="0.033000 0.033000 0.070000" />
+		<origin rpy="0.000000 0  2.356194" xyz="0.033000 0.033000 0.0765" />
 <!--		<origin rpy="0.000000 0 -0.785398" xyz="-0.033 -0.033 0.115" /> -->
 
         </joint>
