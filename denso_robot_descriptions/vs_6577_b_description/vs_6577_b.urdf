@@ -272,7 +272,8 @@
         <joint name="camera_joint" type="fixed">
                 <child link="camera" />
                 <parent link="J6" />
-		<origin rpy="0.000000 0  2.356194" xyz="0.033000 0.033000 0.0765" />
+		<origin rpy="0.000000 0  2.356194" xyz="0.028000 0.033000 0.0765" />
+<!--		<origin rpy="0.000000 0  2.356194" xyz="0.033000 0.033000 0.0765" /> -->
 <!--		<origin rpy="0.000000 0 -0.785398" xyz="-0.033 -0.033 0.115" /> -->
 
         </joint>

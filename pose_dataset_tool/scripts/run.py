@@ -30,8 +30,8 @@ rospy.sleep(2)
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
 
-group.set_max_acceleration_scaling_factor(0.1)
-group.set_max_velocity_scaling_factor(0.25)
+group.set_max_acceleration_scaling_factor(0.05)
+group.set_max_velocity_scaling_factor(0.15)
 
 CAMERA_UPRIGHT = np.pi-0.79
 
@@ -56,8 +56,8 @@ rr, ss, tt = generate_meshgrid(5)
 
 
 dir = '/tmp/pictures/'
-for file in os.listdir(dir):
-  os.remove(dir + file)
+#for file in os.listdir(dir):
+#  os.remove(dir + file)
 
 rotation = 0
 j = 0
@@ -102,11 +102,11 @@ while not rospy.is_shutdown():
         #rospy.loginfo('\nMoved to position:\n{}\njoints values:\n{}\n'.format(pose,group.get_current_joint_values()))
 
         frame_transform, object_pose = transform_pose(tf_buffer, rospy, target_pose.pose)
-        rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
-        rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
+        #rospy.loginfo('\nFrame transform:\n{}\n'.format(frame_transform))
+        #rospy.loginfo('\nObject center transform:\n{}\n'.format(object_pose))
         rotation_matrix = rotm_from_quaternion(frame_transform.transform.rotation)
         translation_vector = vector_from_point(frame_transform.transform.translation)
-        rospy.loginfo('\nTransform:\n\trotation matrix:\n{}\n\ttranslation vector:\n{}\n'.format(rotation_matrix, translation_vector))
+        #rospy.loginfo('\nTransform:\n\trotation matrix:\n{}\n\ttranslation vector:\n{}\n'.format(rotation_matrix, translation_vector))
 
         # project 3d points onto image plane
         proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T

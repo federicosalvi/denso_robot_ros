@@ -33,16 +33,19 @@ camera.fromCameraInfo(camera_params)
 rospy.sleep(2)
 
 rotation = 0
+offset = [1,0,0]
 
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
-target_faces = get_faces(mesh, rotation=rotation, offset=[0,-1,0])
+target_faces = get_faces(mesh, rotation=rotation, offset=offset)
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
-target_corners = get_3D_corners(vertices, rotation=rotation, offset=[0,-1,0])
+target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
 target_width, target_length, target_height = get_box_size(vertices)
-target_centroid = Point(0, -1, target_height/2)
+target_centroid = Point(offset[0], offset[1], offset[2]+target_height/2)
 target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
 
 target_pose = place_target_in_scene(target_centroid, (target_width, target_length, target_height), rotation, scene, rospy)
+#target2_centroid = Point(offset[0], offset[1]-0.09, offset[2]+target_height/2)
+#place_target_in_scene(target2_centroid, (target_width, target_length, target_height), rotation, scene, rospy, 'target2')
 
 group.set_max_acceleration_scaling_factor(0.05)
 group.set_max_velocity_scaling_factor(0.05)
@@ -50,7 +53,7 @@ group.set_max_velocity_scaling_factor(0.05)
 CAMERA_UPRIGHT = np.pi-0.79
 
 group.set_joint_value_target({
-  "joint_1": -np.pi/2,
+  "joint_1": 0,
   "joint_2": 0,
   "joint_3": np.pi/2,
   "joint_4": 0,

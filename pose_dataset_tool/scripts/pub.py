@@ -16,12 +16,17 @@ from library import *
 
 rospy.init_node('tf_pub',anonymous=True)
 
-camera_params = load_camera_parameters()
+camera_params = rospy.wait_for_message('/camera/camera_info', CameraInfo)
 tf_buffer = tf2_ros.Buffer()
 listener = tf2_ros.TransformListener(tf_buffer)
 bridge = CvBridge()
+pub = rospy.Publisher('/camera/camera_with_points', Image, queue_size=10)
+if len(sys.argv) < 2:
+	rotation = 0
+else:
+        rotation = float(sys.argv[1])/180 * np.pi
 
-rotation = 0
+rospy.loginfo('rotation: {}'.format(rotation))
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
 target_corners = get_3D_corners(vertices, rotation=rotation, offset=[1,0,0])
@@ -39,6 +44,10 @@ while not rospy.is_shutdown():
 	frame_transform, object_pose = transform_pose(tf_buffer, rospy, target_pose)
 	rotation_matrix = rotm_from_quaternion(frame_transform.transform.rotation)
 	translation_vector = vector_from_point(frame_transform.transform.translation)
+#	new_points = list(camera_params.K)
+#	new_points[2] -= 1
+#	new_points[5] -= 1
+#	camera_params.K = tuple(new_points)
 	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
 	publish_image_with_points(np.array(proj_points), rospy, bridge, pub)
 	rate.sleep()

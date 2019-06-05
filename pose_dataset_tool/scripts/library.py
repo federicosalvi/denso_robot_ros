@@ -139,14 +139,14 @@ def rotate_random(m, low=-60, high=60.0):
     angle = angle*np.pi/180
     return m.dot([[np.cos(angle),-np.sin(angle),0],[np.sin(angle),np.cos(angle),0],[0,0,1]])
 
-def place_target_in_scene(target_centroid, target_size, rotation, scene, rospy):
+def place_target_in_scene(target_centroid, target_size, rotation, scene, rospy, name='target'):
     target_pose = PoseStamped()
     target_pose.header.frame_id = 'world'
     target_pose.header.stamp = rospy.Time.now()
     target_pose.pose.position = target_centroid
     target_pose.pose.orientation =  Quaternion(*tf.transformations.quaternion_from_euler(0,0,rotation))
 
-    scene.add_box('target', target_pose, size=target_size)
+    scene.add_box(name, target_pose, size=target_size)
     return target_pose
 
 def get_faces(mesh, rotation=0, offset=[0,0,0]):
@@ -240,11 +240,11 @@ def add_robot_constraints():
 
 def generate_meshgrid(n_samples=5):
     # radii
-    r = np.linspace(0.9, 0.9, n_samples)
+    r = np.linspace(0.9, 0.8, n_samples)
     # rotation around y axis
     s = np.linspace(np.pi/4, np.pi/3, n_samples)
     # rotation around z axis
-    t = np.linspace(-3*np.pi/4, -np.pi/4, n_samples)
+    t = np.linspace(-np.pi/4, np.pi/4, n_samples)
     rr, ss , tt = np.meshgrid(r,s,t)
     rr = rr.flatten()
     ss = ss.flatten()
