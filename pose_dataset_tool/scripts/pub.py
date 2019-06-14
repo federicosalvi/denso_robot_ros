@@ -17,21 +17,26 @@ from library import *
 rospy.init_node('tf_pub',anonymous=True)
 
 camera_params = rospy.wait_for_message('/camera/camera_info', CameraInfo)
+camera = image_geometry.PinholeCameraModel()
+camera.fromCameraInfo(camera_params)
 tf_buffer = tf2_ros.Buffer()
 listener = tf2_ros.TransformListener(tf_buffer)
 bridge = CvBridge()
 pub = rospy.Publisher('/camera/camera_with_points', Image, queue_size=10)
+pub_seg = rospy.Publisher('/camera/camera_with_segm', Image, queue_size=10)
 if len(sys.argv) < 2:
 	rotation = 0
 else:
         rotation = float(sys.argv[1])/180 * np.pi
 
+offset=[1,0,0]
 rospy.loginfo('rotation: {}'.format(rotation))
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
+target_faces = get_faces(mesh, rotation=rotation, offset=offset)
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
-target_corners = get_3D_corners(vertices, rotation=rotation, offset=[1,0,0])
+target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
 target_width, target_length, target_height = get_box_size(vertices)
-target_centroid = Point(1, 0, target_height/2)
+target_centroid = Point(offset[0], offset[1], offset[2]+target_height/2)
 target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
 
 target_pose = Pose()
@@ -48,6 +53,31 @@ while not rospy.is_shutdown():
 #	new_points[2] -= 1
 #	new_points[5] -= 1
 #	camera_params.K = tuple(new_points)
-	proj_points = proj_to_camera(target_points, rotation_matrix, translation_vector, camera_params).T
-	publish_image_with_points(np.array(proj_points), rospy, bridge, pub)
+        # transform point from world to camera frame
+        rt = np.concatenate((rotation_matrix, translation_vector), axis=1)
+        transformed_target_points = rt.dot(target_points).T
+
+        # project 3d points onto image plane
+        proj_points = []
+        for point in transformed_target_points:
+                proj_points.append([int(x) for x in camera.project3dToPixel(tuple(point))])
+        proj_points = np.array(proj_points)
+        publish_image_with_points(proj_points, rospy, bridge, pub)
+
+        # transform faces from world to camera frame
+        transformed_target_faces = []
+        for face in target_faces:
+                transformed_target_faces.append(rt.dot(face).T)
+        transformed_target_faces = np.array(transformed_target_faces)
+
+        # project faces from world to camera frame
+        proj_faces = []
+        for face in transformed_target_faces:
+                proj_face = []
+                for point in face:
+                        proj_face.append([int(x) for x in camera.project3dToPixel(tuple(point))])
+                proj_faces.append(proj_face)
+        proj_faces = np.array(proj_faces, dtype=int)
+        overlay_seg_mask(proj_faces, rospy, bridge, pub_seg)
+
 	rate.sleep()

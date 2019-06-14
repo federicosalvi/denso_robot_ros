@@ -52,7 +52,7 @@ group.stop()
 
 group.set_path_constraints(add_robot_constraints())
 
-rr, ss, tt = generate_meshgrid(5)
+rr, ss, tt = generate_meshgrid(7)
 
 
 dir = '/tmp/pictures/'
@@ -62,11 +62,11 @@ dir = '/tmp/pictures/'
 rotation = 0
 j = 0
 while not rospy.is_shutdown():
-
-    target_faces = get_faces(mesh, rotation=rotation, offset=[1,0,0])
-    target_corners = get_3D_corners(vertices, rotation=rotation, offset=[1,0,0])
+    offset = [1,0,0]
+    target_faces = get_faces(mesh, rotation=rotation, offset=offset)
+    target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
     target_width, target_length, target_height = get_box_size(vertices)
-    target_centroid = Point(1, 0, target_height/2)
+    target_centroid = Point(offset[0], offset[1], offset[2] + target_height/2)
     target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
 
     target_pose = place_target_in_scene(target_centroid, (target_width, target_length, target_height), rotation, scene, rospy)
@@ -74,13 +74,15 @@ while not rospy.is_shutdown():
     i = 0
     sphere_origin = target_centroid
     while not rospy.is_shutdown():
+        if i == len(rr):
+            break
         pose.position = sample_sphere(rr[i], ss[i], tt[i]) # , offset=sphere_origin)
         forward = normalize([
             target_centroid.x - pose.position.x,
             target_centroid.y - pose.position.y,
             target_centroid.z - pose.position.z
             ])
-        pose.orientation = look_at(forward)
+        pose.orientation = look_at(forward, rotate=True)
 
         group.set_pose_target(pose)
         success = group.go(True, wait=True)
@@ -131,8 +133,6 @@ while not rospy.is_shutdown():
         f.close()
 
         i += 1
-        if i == len(rr):
-            break
         j += 1
     rotation += np.pi/2
     if np.abs(rotation - (np.pi*2)) < 1e-2:

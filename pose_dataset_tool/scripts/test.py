@@ -36,7 +36,7 @@ camera.fromCameraInfo(camera_params)
 rospy.sleep(2)
 
 rotation = 0
-offset = [1,0,0]
+offset = [1,0,0.24]
 
 mesh = MeshPly('/root/catkin_ws/bracket.ply')
 target_faces = get_faces(mesh, rotation=rotation, offset=offset)

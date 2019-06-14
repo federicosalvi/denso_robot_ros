@@ -19,13 +19,15 @@ def sample_sphere(r, s, t):
     z = r * np.cos(s)
     return Point(x,y,z)
 
-def look_at(forward):
+def look_at(forward, rotate=False):
     camera_up = np.array([0,0,1])
     left = normalize(np.cross(camera_up, forward))
     up = np.cross(forward, left)
 
     # we're switching the axis since the camera "points" along the z-axis
     R = np.vstack((-left, -up, forward)).T
+    if rotate:
+	R = rotate_random(R)
 
     sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
     singular = sy < 1e-6
@@ -55,6 +57,7 @@ def transform_pose(tf_buffer, rospy, pose, target_frame='camera', source_frame='
   return transform, transformed_pose
 
 def transform_points(tf_buffer, rospy, points, target_frame='camera', source_frame='world'):
+  # shape of the input points should be (npoints, 3) or (npoints, 4) in case of homogeneous coordinates
   transformed_points = np.empty((points.shape[0], 3))
   for i,point in enumerate(points):
     targetPoint = PointStamped()
@@ -94,7 +97,7 @@ def publish_image_with_points(points, rospy, bridge, pub):
 
     for edge in edges_corners:
         start, end = corners[edge]
-        cv2.line(cv2_img,tuple(start),tuple(end),(255,0,0),3)
+        cv2.line(cv2_img,tuple(start),tuple(end),(255,0,0),1)
         pub.publish(bridge.cv2_to_imgmsg(cv2_img, encoding='bgr8'))
   except CvBridgeError as e:
     print(e)
@@ -107,6 +110,16 @@ def publish_seg_mask(faces, rospy, bridge, pub):
     for face in faces:
         cv2.fillPoly(img,[face],(255))
     pub.publish(bridge.cv2_to_imgmsg(img, encoding='mono8'))
+  except Exception as e:
+    print(e)
+
+def overlay_seg_mask(faces, rospy, bridge, pub):
+  image_msg = rospy.wait_for_message('/camera/image_color', Image)
+  try:
+    cv2_img = bridge.imgmsg_to_cv2(image_msg, 'bgr8')
+    for face in faces:
+        cv2.polylines(cv2_img,[face],True,(255,0,0),1)
+    pub.publish(bridge.cv2_to_imgmsg(cv2_img, encoding='bgr8'))
   except Exception as e:
     print(e)
 
@@ -240,14 +253,25 @@ def add_robot_constraints():
 
 def generate_meshgrid(n_samples=5):
     # radii
-    r = np.linspace(0.9, 0.8, n_samples)
+    r = np.linspace(0.7, 0.9, n_samples)
     # rotation around y axis
-    s = np.linspace(np.pi/4, np.pi/3, n_samples)
+    s = np.linspace(np.pi/4, np.pi/2.666, n_samples)
     # rotation around z axis
     t = np.linspace(-np.pi/4, np.pi/4, n_samples)
     rr, ss , tt = np.meshgrid(r,s,t)
     rr = rr.flatten()
     ss = ss.flatten()
     tt = tt.flatten()
+
+    # by reversing half of this array, we prevent the robot
+    # from going always right-to-left horizontally, which wastes
+    # time since at the end of each row he has to go back all the
+    # way to the right. Instead it goes left-to-right
+ 
+
+    for j in range(0,len(tt),n_samples*2):
+       tt[j:j+n_samples] = tt[j:j+n_samples][::-1]
     return rr, ss, tt
 
+def point_difference(a,b):
+    return np.linalg.norm(vector_from_point(a, vertical=False)-vector_from_point(b,vertical=False))
