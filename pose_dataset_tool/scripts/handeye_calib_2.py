@@ -26,8 +26,8 @@ bridge = CvBridge()
 rospy.sleep(2)
 
 
-group.set_max_acceleration_scaling_factor(1)
-group.set_max_velocity_scaling_factor(1)
+group.set_max_acceleration_scaling_factor(0.05)
+group.set_max_velocity_scaling_factor(0.15)
 
 # dummy initial pose
 rotation = (np.pi/2,-np.pi/4,np.pi/2)
