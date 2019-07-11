@@ -16,7 +16,7 @@
 		<joint name="joint_4"/>
 		<joint name="joint_5"/>
 		<joint name="joint_6"/>
-		<joint name="camera_joint"/>
+<!--		<joint name="camera_joint"/> -->
         </group>
         <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
         <!-- <end_effector name="camera" parent_link="camera" group="arm" parent_group="arm" /> -->

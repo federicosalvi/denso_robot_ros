@@ -7,6 +7,7 @@ Panels:
         - /MotionPlanning1
         - /MotionPlanning1/Planned Path1
         - /Camera1
+        - /Marker1
       Splitter Ratio: 0.742560029
     Tree Height: 143
   - Class: rviz/Help
@@ -222,9 +223,18 @@ Visualization Manager:
       Value: true
       Visibility:
         Grid: true
+        Marker: true
         MotionPlanning: true
         Value: true
       Zoom Factor: 1
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /aruco_single/marker
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -256,10 +266,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.529797435
+      Pitch: 0.364797413
       Target Frame: base_link
       Value: XYOrbit (rviz)
-      Yaw: 0.829947472
+      Yaw: 3.99312663
     Saved: ~
 Window Geometry:
   Camera:

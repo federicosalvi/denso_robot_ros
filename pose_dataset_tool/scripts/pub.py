@@ -14,7 +14,7 @@ import os
 from MeshPly import MeshPly
 from library import *
 
-rospy.init_node('tf_pub',anonymous=True)
+rospy.init_node('vs_tf_pub',anonymous=True)
 
 camera_params = rospy.wait_for_message('/camera/camera_info', CameraInfo)
 camera = image_geometry.PinholeCameraModel()
@@ -24,18 +24,18 @@ listener = tf2_ros.TransformListener(tf_buffer)
 bridge = CvBridge()
 pub = rospy.Publisher('/camera/camera_with_points', Image, queue_size=10)
 pub_seg = rospy.Publisher('/camera/camera_with_segm', Image, queue_size=10)
-if len(sys.argv) < 2:
-	rotation = 0
-else:
-        rotation = float(sys.argv[1])/180 * np.pi
+if len(sys.argv) < 4:
+	print('Usage: rosrun pose_dataset_tool pub.py <model filename> <rotation in degrees> <height offset>')
+	exit()
+rotation = float(sys.argv[2])/180 * np.pi
+height_offset = float(sys.argv[3])
 
-offset=[1,0,0]
-rospy.loginfo('rotation: {}'.format(rotation))
-mesh = MeshPly('/root/catkin_ws/bracket.ply')
-target_faces = get_faces(mesh, rotation=rotation, offset=offset)
+mesh = MeshPly('/root/catkin_ws/src/denso_robot_ros/pose_dataset_tool/models/{}'.format(sys.argv[1]))
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
-target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
 target_width, target_length, target_height = get_box_size(vertices)
+offset=[1,0,target_height/2 + height_offset]
+target_faces = get_faces(mesh, rotation=rotation, offset=offset)
+target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
 target_centroid = Point(offset[0], offset[1], offset[2]+target_height/2)
 target_points = np.hstack((np.vstack((vector_from_point(target_centroid),[1])),target_corners))
 

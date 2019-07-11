@@ -227,6 +227,13 @@ def add_robot_constraints():
     roll_constraint.weight = 1
     #constraint.orientation_constraints = [roll_constraint]
 
+    joint_1_constraint = JointConstraint()
+    joint_1_constraint.joint_name = "joint_1"
+    joint_1_constraint.position = 0
+    joint_1_constraint.tolerance_above = np.pi/2
+    joint_1_constraint.tolerance_below = np.pi/2
+    joint_1_constraint.weight = 1
+
     joint_4_constraint = JointConstraint()
     joint_4_constraint.joint_name = "joint_4"
     joint_4_constraint.position = 0
@@ -248,7 +255,7 @@ def add_robot_constraints():
     joint_6_constraint.tolerance_below = np.pi
     joint_6_constraint.weight = 1
 
-    constraint.joint_constraints = [joint_4_constraint, joint_5_constraint, joint_6_constraint]
+    constraint.joint_constraints = [joint_1_constraint, joint_6_constraint]
     return constraint
 
 def generate_meshgrid(n_samples=5):
@@ -267,7 +274,6 @@ def generate_meshgrid(n_samples=5):
     # from going always right-to-left horizontally, which wastes
     # time since at the end of each row he has to go back all the
     # way to the right. Instead it goes left-to-right
- 
 
     for j in range(0,len(tt),n_samples*2):
        tt[j:j+n_samples] = tt[j:j+n_samples][::-1]
@@ -275,3 +281,17 @@ def generate_meshgrid(n_samples=5):
 
 def point_difference(a,b):
     return np.linalg.norm(vector_from_point(a, vertical=False)-vector_from_point(b,vertical=False))
+
+def place_stand_box(height, frame_id, scene, rospy):
+  if height < 1e-03:
+    scene.remove_world_object('stand')
+    return
+  box_pose = PoseStamped()
+  box_pose.header.frame_id = frame_id
+  box_pose.header.stamp = rospy.Time.now()
+  box_pose.pose.position.x = 1
+  box_pose.pose.position.y = -0.085
+  box_pose.pose.position.z = height/2
+  box_pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0,0,0))
+  scene.add_box('stand', box_pose, size=(0.18,0.45,height))
+

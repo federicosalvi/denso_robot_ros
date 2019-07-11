@@ -38,7 +38,7 @@ rospy.sleep(2)
 rotation = 0
 offset = [1,0,0.24]
 
-mesh = MeshPly('/root/catkin_ws/bracket.ply')
+mesh = MeshPly('/root/catkin_ws/src/denso_robot_ros/pose_dataset_tools/models/bracket.ply')
 target_faces = get_faces(mesh, rotation=rotation, offset=offset)
 vertices = np.c_[np.array(mesh.vertices), np.ones((len(mesh.vertices), 1))].transpose()
 target_corners = get_3D_corners(vertices, rotation=rotation, offset=offset)
